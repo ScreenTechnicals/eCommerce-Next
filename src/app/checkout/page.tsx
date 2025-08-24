@@ -51,7 +51,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/login?redirect=/checkout');
+      router.push('/?showLogin=true');
     }
     if (cartItems.length === 0) {
       router.push('/products');
@@ -75,7 +75,7 @@ export default function CheckoutPage() {
   if (!isAuthenticated || cartItems.length === 0) {
     return (
         <div className="container mx-auto flex items-center justify-center py-24">
-            <p>Loading...</p>
+            <p>You must be logged in to checkout. Redirecting...</p>
         </div>
     );
   }

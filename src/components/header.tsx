@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from './ui/sheet';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -20,14 +21,36 @@ const navLinks = [
 
 export default function Header() {
   const { itemCount } = useCart();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, login, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push('/');
+     toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+    });
   }
+
+  const handleLogin = async () => {
+    try {
+      await login();
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+      });
+    } catch (error) {
+       console.error("Google Sign-In Error:", error);
+      toast({
+        title: "Login Failed",
+        description: "Could not sign in with Google.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const UserMenu = () => (
     <DropdownMenu>
@@ -45,8 +68,7 @@ export default function Header() {
           </>
         ) : (
           <>
-            <DropdownMenuItem asChild><Link href="/login">Login</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link href="/register">Register</Link></DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogin}>Login with Google</DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>
