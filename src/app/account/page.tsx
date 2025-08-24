@@ -49,7 +49,7 @@ const mockOrders = [
 const addressSchema = z.object({
   name: z.string().min(2, 'A name for the address is required'),
   phoneNumber: z.string().min(10, 'A valid phone number is required'),
-  address: z.string().min(5, 'Address is required'),
+  address: z.string().min(5, 'Please enter your full street address and ensure it is at least 5 characters long.'),
   city: z.string().min(2, 'City is required'),
   zipCode: z.string().min(5, 'A valid zip code is required'),
   country: z.string().min(2, 'Country is required'),
