@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import type { Product } from '@/lib/types';
-import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 
 const CATEGORIES = ['All', 'Electronics', 'Clothing', 'Books', 'Home Goods'];
@@ -49,7 +49,7 @@ export default function ProductsPage() {
         filtered.sort((a, b) => a.price - b.price);
         break;
       case 'price-desc':
-        filtered.sort((a, b) => b.price - a.price);
+        filtered.sort((a, b) => b.price - b.price);
         break;
       case 'rating':
         filtered.sort((a, b) => b.rating - a.rating);
@@ -149,17 +149,17 @@ export default function ProductsPage() {
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
-                    <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); handlePageChange(currentPage - 1); }} aria-disabled={currentPage === 1} />
+                    <PaginationPrevious onClick={() => handlePageChange(currentPage - 1)} />
                   </PaginationItem>
                   {[...Array(totalPages)].map((_, i) => (
                     <PaginationItem key={i}>
-                       <PaginationLink href="#" onClick={(e) => { e.preventDefault(); handlePageChange(i + 1); }} isActive={currentPage === i + 1}>
+                       <PaginationLink onClick={() => handlePageChange(i + 1)} isActive={currentPage === i + 1}>
                          {i + 1}
                        </PaginationLink>
                     </PaginationItem>
                   ))}
                   <PaginationItem>
-                    <PaginationNext href="#" onClick={(e) => { e.preventDefault(); handlePageChange(currentPage + 1); }} aria-disabled={currentPage === totalPages}/>
+                    <PaginationNext onClick={() => handlePageChange(currentPage + 1)} />
                   </PaginationItem>
                 </PaginationContent>
               </Pagination>
