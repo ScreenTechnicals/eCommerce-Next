@@ -31,7 +31,8 @@ export default function ProductsPage() {
     if (searchQuery) {
       filtered = filtered.filter(p =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchQuery.toLowerCase())
+        p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -49,7 +50,7 @@ export default function ProductsPage() {
         filtered.sort((a, b) => a.price - b.price);
         break;
       case 'price-desc':
-        filtered.sort((a, b) => b.price - b.price);
+        filtered.sort((a, b) => b.price - a.price);
         break;
       case 'rating':
         filtered.sort((a, b) => b.rating - a.rating);
