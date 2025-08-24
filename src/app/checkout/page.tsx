@@ -32,7 +32,7 @@ const checkoutSchema = shippingSchema.merge(paymentSchema);
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, discount, cartTotalWithDiscount, clearCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
 
   const form = useForm<z.infer<typeof checkoutSchema>>({
@@ -59,6 +59,14 @@ export default function CheckoutPage() {
   }, [isAuthenticated, router, cartItems]);
 
   const onSubmit = (values: z.infer<typeof checkoutSchema>) => {
+    const orderDetails = {
+      shipping: values,
+      items: cartItems,
+      total: cartTotalWithDiscount,
+      orderId: `ORD-${Date.now()}`
+    };
+    localStorage.setItem('lastOrder', JSON.stringify(orderDetails));
+    
     console.log('Order submitted:', values);
     clearCart();
     router.push('/checkout/success');
