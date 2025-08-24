@@ -10,10 +10,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
-import { Package, Home, User, Download } from 'lucide-react';
+import { Package, Home, User, Download, PlusCircle } from 'lucide-react';
 import type { CartItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 // Mock data - in a real app, this would come from a database
 const mockOrders = [
@@ -38,18 +46,13 @@ const mockOrders = [
   },
 ];
 
-const mockAddresses = [
-    {
-        id: '1',
-        name: 'Home',
-        address: '123 Main St, Anytown, USA 12345'
-    },
-    {
-        id: '2',
-        name: 'Work',
-        address: '456 Business Ave, Workville, USA 54321'
-    }
-]
+const addressSchema = z.object({
+  name: z.string().min(2, 'A name for the address is required'),
+  address: z.string().min(5, 'Address is required'),
+  city: z.string().min(2, 'City is required'),
+  zipCode: z.string().min(5, 'A valid zip code is required'),
+  country: z.string().min(2, 'Country is required'),
+});
 
 const handleDownloadInvoice = (order: typeof mockOrders[0]) => {
     const doc = new jsPDF();
@@ -194,31 +197,107 @@ const OrdersTab = () => (
     </Card>
 );
 
-const AddressesTab = () => (
-    <Card>
-    <CardHeader>
-        <CardTitle>My Addresses</CardTitle>
-        <CardDescription>Manage your saved shipping addresses.</CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-4">
-        <div className="space-y-4">
-        {mockAddresses.map(address => (
-            <div key={address.id} className="flex items-center justify-between rounded-md border p-4">
+const AddressesTab = () => {
+    const { user } = useAuth();
+    const [addresses, setAddresses] = useState<any[]>([]);
+    const [isFormOpen, setIsFormOpen] = useState(false);
+  
+    const form = useForm<z.infer<typeof addressSchema>>({
+      resolver: zodResolver(addressSchema),
+      defaultValues: { name: '', address: '', city: '', zipCode: '', country: '' },
+    });
+  
+    useEffect(() => {
+      if (!user) return;
+      const addressesRef = collection(db, 'users', user.id, 'addresses');
+      const unsubscribe = onSnapshot(addressesRef, (snapshot) => {
+        setAddresses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      });
+      return () => unsubscribe();
+    }, [user]);
+  
+    const handleAddAddress = async (values: z.infer<typeof addressSchema>) => {
+      if (!user) return;
+      const addressesRef = collection(db, 'users', user.id, 'addresses');
+      await addDoc(addressesRef, values);
+      form.reset();
+      setIsFormOpen(false);
+    };
+
+    const handleRemoveAddress = async (addressId: string) => {
+      if (!user) return;
+      const addressRef = doc(db, 'users', user.id, 'addresses', addressId);
+      await deleteDoc(addressRef);
+    }
+  
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>My Addresses</CardTitle>
+          <CardDescription>Manage your saved shipping addresses.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {addresses.length > 0 ? (
+            addresses.map(address => (
+              <div key={address.id} className="flex items-center justify-between rounded-md border p-4">
                 <div className="space-y-1">
-                    <p className="font-semibold">{address.name}</p>
-                    <p className="text-muted-foreground">{address.address}</p>
+                  <p className="font-semibold">{address.name}</p>
+                  <p className="text-muted-foreground">{address.address}, {address.city}, {address.zipCode}, {address.country}</p>
                 </div>
                 <div>
-                    <Button variant="ghost" size="sm">Edit</Button>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">Remove</Button>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleRemoveAddress(address.id)}>Remove</Button>
                 </div>
-            </div>
-        ))}
-        </div>
-        <Button>Add New Address</Button>
-    </CardContent>
-    </Card>
-)
+              </div>
+            ))
+          ) : (
+            <p className="text-muted-foreground">You have no saved addresses.</p>
+          )}
+           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+                <Button>
+                    <PlusCircle className="mr-2" /> Add New Address
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add a New Address</DialogTitle>
+                    <DialogDescription>
+                        Enter the details for your new shipping address.
+                    </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleAddAddress)} className="space-y-4">
+                        <FormField control={form.control} name="name" render={({ field }) => (
+                            <FormItem><FormLabel>Address Name (e.g. Home, Work)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                         <FormField control={form.control} name="address" render={({ field }) => (
+                            <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <FormField control={form.control} name="city" render={({ field }) => (
+                                <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                            <FormField control={form.control} name="zipCode" render={({ field }) => (
+                                <FormItem><FormLabel>Zip Code</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                             <FormField control={form.control} name="country" render={({ field }) => (
+                                <FormItem><FormLabel>Country</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="secondary">Cancel</Button>
+                            </DialogClose>
+                            <Button type="submit">Save Address</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+           </Dialog>
+        </CardContent>
+      </Card>
+    );
+  };
 
 export default function AccountPage() {
   const { user, isAuthenticated, loading } = useAuth();
