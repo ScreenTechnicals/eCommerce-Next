@@ -1,27 +1,48 @@
 'use client';
 
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import type { User } from '@/lib/types';
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { auth } from '@/lib/firebase';
+import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (user: User) => void;
-  logout: () => void;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useLocalStorage<User | null>('user', null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = (userData: User) => {
-    setUser(userData);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || 'User',
+          email: firebaseUser.email || '',
+        });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const login = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
   };
 
-  const logout = () => {
-    setUser(null);
+  const logout = async () => {
+    await signOut(auth);
   };
 
   const value = {
@@ -29,9 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!user,
     login,
     logout,
+    loading,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
