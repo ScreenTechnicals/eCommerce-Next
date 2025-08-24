@@ -11,17 +11,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 import { Package, Home, User, Download, PlusCircle } from 'lucide-react';
-import type { CartItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Badge } from '@/components/ui/badge';
 
 // Mock data - in a real app, this would come from a database
 const mockOrders = [
@@ -220,7 +220,7 @@ const AddressesTab = () => {
     const handleAddAddress = async (values: z.infer<typeof addressSchema>) => {
       if (!user) return;
       const addressesRef = collection(db, 'users', user.id, 'addresses');
-      await addDoc(addressesRef, values);
+      await addDoc(addressesRef, { ...values, isActive: addresses.length === 0 });
       form.reset();
       setIsFormOpen(false);
     };
@@ -231,6 +231,26 @@ const AddressesTab = () => {
       await deleteDoc(addressRef);
     }
   
+    const handleSetActiveAddress = async (addressIdToActivate: string) => {
+        if (!user) return;
+        const addressesRef = collection(db, 'users', user.id, 'addresses');
+        const batch = writeBatch(db);
+    
+        // Find the currently active address to deactivate it
+        const currentActiveQuery = query(addressesRef, where('isActive', '==', true));
+        const currentActiveSnapshot = await getDocs(currentActiveQuery);
+    
+        currentActiveSnapshot.forEach(doc => {
+            batch.update(doc.ref, { isActive: false });
+        });
+    
+        // Set the new address as active
+        const newActiveRef = doc(db, 'users', user.id, 'addresses', addressIdToActivate);
+        batch.update(newActiveRef, { isActive: true });
+    
+        await batch.commit();
+    };
+
     return (
       <Card>
         <CardHeader>
@@ -242,11 +262,17 @@ const AddressesTab = () => {
             addresses.map(address => (
               <div key={address.id} className="flex items-start justify-between rounded-md border p-4">
                 <div className="space-y-1">
-                  <p className="font-semibold">{address.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold">{address.name}</p>
+                    {address.isActive && <Badge>Active</Badge>}
+                  </div>
                   <p className="text-muted-foreground">{address.address}, {address.city}, {address.zipCode}, {address.country}</p>
                   <p className="text-sm text-muted-foreground">Phone: {address.phoneNumber}</p>
                 </div>
-                <div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                   {!address.isActive && (
+                      <Button variant="outline" size="sm" onClick={() => handleSetActiveAddress(address.id)}>Set as Active</Button>
+                    )}
                   <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleRemoveAddress(address.id)}>Remove</Button>
                 </div>
               </div>
@@ -340,5 +366,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
-    

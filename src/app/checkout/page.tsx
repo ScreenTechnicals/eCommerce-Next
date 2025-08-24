@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -6,13 +7,15 @@ import * as z from 'zod';
 import { useCart } from '@/context/cart-provider';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { formatCurrency } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const shippingSchema = z.object({
   fullName: z.string().min(2, 'Full name is required'),
@@ -57,6 +60,28 @@ export default function CheckoutPage() {
       router.push('/products');
     }
   }, [isAuthenticated, router, cartItems]);
+
+  useEffect(() => {
+    async function fetchActiveAddress() {
+      if (user) {
+        const addressesRef = collection(db, 'users', user.id, 'addresses');
+        const q = query(addressesRef, where('isActive', '==', true));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const activeAddress = querySnapshot.docs[0].data();
+          form.reset({
+            ...form.getValues(),
+            fullName: user.name, // Assuming user name for full name
+            address: activeAddress.address,
+            city: activeAddress.city,
+            zipCode: activeAddress.zipCode,
+            country: activeAddress.country,
+          });
+        }
+      }
+    }
+    fetchActiveAddress();
+  }, [user, form]);
 
   const onSubmit = (values: z.infer<typeof checkoutSchema>) => {
     const orderDetails = {
