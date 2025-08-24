@@ -53,33 +53,67 @@ const mockAddresses = [
 
 const handleDownloadInvoice = (order: typeof mockOrders[0]) => {
     const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.height;
+    let y = 20;
 
-    doc.setFontSize(22);
-    doc.text("Invoice", 105, 20, { align: 'center' });
-
-    doc.setFontSize(12);
-    doc.text(`Order ID: ${order.orderId}`, 20, 40);
-    doc.text(`Date: ${format(order.date, 'PPP')}`, 20, 46);
-    doc.text(`Status: ${order.status}`, 20, 52);
-
-    doc.setFontSize(16);
-    doc.text("Items", 20, 70);
-
-    let y = 78;
+    // Header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(24);
+    doc.text("eCommerce Next", 20, y);
+    y += 15;
+    
+    doc.setFontSize(18);
+    doc.text("Invoice", 20, y);
+    y += 10;
+    
+    // Order Details
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
+    doc.text(`Order ID: ${order.orderId}`, 20, y);
+    doc.text(`Date: ${format(order.date, 'PPP')}`, 190, y, { align: 'right' });
+    y += 6;
+    doc.text(`Status: ${order.status}`, 20, y);
+    y += 12;
+
+    // Table Header
+    doc.setDrawColor(200); // Light gray for lines
+    doc.setLineWidth(0.5);
+    doc.line(20, y, 190, y); // Top border of table
+    y += 8;
+    doc.setFont('helvetica', 'bold');
+    doc.text("Item Description", 22, y);
+    doc.text("Qty", 125, y, { align: 'center'});
+    doc.text("Unit Price", 155, y, { align: 'right'});
+    doc.text("Total", 188, y, { align: 'right'});
+    y += 4;
+    doc.line(20, y, 190, y); // Bottom border of header
+    y += 8;
+    
+    // Table Rows
+    doc.setFont('helvetica', 'normal');
     order.items.forEach(item => {
-        doc.text(`${item.product.name} x ${item.quantity}`, 20, y);
-        doc.text(formatCurrency(item.price), 190, y, { align: 'right'});
-        y += 6;
+        doc.text(item.product.name, 22, y);
+        doc.text(item.quantity.toString(), 125, y, { align: 'center'});
+        doc.text(formatCurrency(item.price), 155, y, { align: 'right'});
+        doc.text(formatCurrency(item.price * item.quantity), 188, y, { align: 'right'});
+        y += 7;
     });
 
-    doc.setLineWidth(0.5);
-    doc.line(20, y, 190, y);
+    // Table Footer (Grand Total)
+    y += 5;
+    doc.line(130, y, 190, y); // line above total
     y += 8;
+    doc.setFont('helvetica', 'bold');
+    doc.text("Grand Total:", 132, y);
+    doc.text(formatCurrency(order.total), 188, y, { align: 'right'});
 
-    doc.setFontSize(14);
-    doc.text("Total:", 150, y);
-    doc.text(formatCurrency(order.total), 190, y, { align: 'right'});
+    // Footer
+    const footerY = pageHeight - 20;
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text("Thank you for your business!", 105, footerY, { align: 'center'});
+    doc.text("eCommerce Next | 123 Web St, Online City | contact@ecommercenext.com", 105, footerY + 5, { align: 'center'});
+
 
     doc.save(`invoice-${order.orderId}.pdf`);
 };
