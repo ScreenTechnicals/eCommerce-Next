@@ -2,7 +2,6 @@
 
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import type { CartItem, Product } from '@/lib/types';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from './auth-context';
 import { db } from '@/lib/firebase';
@@ -30,7 +29,6 @@ const VALID_COUPONS = {
 };
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [localCart, setLocalCart] = useLocalStorage<CartItem[]>('cart', []);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
@@ -45,7 +43,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
       
       const unsubscribe = onSnapshot(cartRef, (docSnap) => {
         const firestoreCart = docSnap.exists() ? docSnap.data().items || [] : [];
-        const localCartOnLogin = JSON.parse(localStorage.getItem('cart') || '[]');
+        
+        let localCartOnLogin: CartItem[] = [];
+        const localCartString = localStorage.getItem('cart');
+        if (localCartString) {
+          try {
+            localCartOnLogin = JSON.parse(localCartString);
+          } catch (e) {
+            console.error("Failed to parse local cart", e);
+            localCartOnLogin = [];
+          }
+        }
+
 
         if (localCartOnLogin.length > 0) {
           const mergedCart = [...firestoreCart];
@@ -59,7 +68,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           });
           setDoc(cartRef, { items: mergedCart }, { merge: true });
           setCartItems(mergedCart);
-          setLocalCart([]); // Clear local cart
+          localStorage.removeItem('cart');
         } else {
           setCartItems(firestoreCart);
         }
@@ -68,9 +77,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return () => unsubscribe();
     } else {
       // Not logged in, use local storage
+      let localCart: CartItem[] = [];
+      const localCartString = localStorage.getItem('cart');
+      if (localCartString) {
+          try {
+            localCart = JSON.parse(localCartString);
+          } catch (e) {
+            console.error("Failed to parse local cart", e);
+            localCart = [];
+          }
+        }
       setCartItems(localCart);
     }
-  }, [user, loading, setLocalCart]);
+  }, [user, loading]);
 
 
   const updateCart = (newCartItems: CartItem[]) => {
@@ -78,7 +97,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const cartRef = doc(db, 'carts', user.id);
       setDoc(cartRef, { items: newCartItems }, { merge: true });
     } else {
-      setLocalCart(newCartItems);
+      try {
+        localStorage.setItem('cart', JSON.stringify(newCartItems));
+      } catch (e) {
+        console.error("Failed to save cart to local storage", e);
+      }
     }
      setCartItems(newCartItems);
   };
