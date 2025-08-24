@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { Trash2, ShoppingBag, Tag } from 'lucide-react';
+import { Trash2, ShoppingBag, Minus, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 
@@ -42,13 +42,23 @@ export default function CartPage() {
                         <p className="text-sm text-muted-foreground">{formatCurrency(item.product.price)}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateQuantity(item.product.id, parseInt(e.target.value))}
-                          className="w-20 text-center"
-                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                        >
+                          <Minus className="size-4" />
+                        </Button>
+                        <span className="w-10 text-center font-medium">{item.quantity}</span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                        >
+                          <Plus className="size-4" />
+                        </Button>
                       </div>
                       <p className="w-24 text-right font-semibold">{formatCurrency(item.product.price * item.quantity)}</p>
                       <Button variant="ghost" size="icon" onClick={() => removeFromCart(item.product.id)}>
