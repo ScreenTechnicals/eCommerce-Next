@@ -14,7 +14,7 @@ import { Package, Home, User, Download, PlusCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, writeBatch, query, where, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, writeBatch, query, where, getDocs, serverTimestamp, orderBy } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
@@ -211,7 +211,8 @@ const AddressesTab = () => {
     useEffect(() => {
       if (!user) return;
       const addressesRef = collection(db, 'users', user.id, 'addresses');
-      const unsubscribe = onSnapshot(addressesRef, (snapshot) => {
+      const q = query(addressesRef, orderBy('createdAt', 'desc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
         setAddresses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       });
       return () => unsubscribe();
@@ -220,7 +221,7 @@ const AddressesTab = () => {
     const handleAddAddress = async (values: z.infer<typeof addressSchema>) => {
       if (!user) return;
       const addressesRef = collection(db, 'users', user.id, 'addresses');
-      await addDoc(addressesRef, { ...values, isActive: addresses.length === 0 });
+      await addDoc(addressesRef, { ...values, isActive: addresses.length === 0, createdAt: serverTimestamp() });
       form.reset();
       setIsFormOpen(false);
     };
