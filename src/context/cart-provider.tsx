@@ -44,35 +44,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const cartRef = doc(db, 'carts', user.id);
       
       const unsubscribe = onSnapshot(cartRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const cartData = docSnap.data();
-          const items = cartData.items || [];
-          setCartItems(items);
-          
-          if(localCart.length > 0) {
-             // Merge local cart into firestore cart
-            const mergedCart = [...items];
-            localCart.forEach(localItem => {
-              const existingItemIndex = mergedCart.findIndex(item => item.product.id === localItem.product.id);
-              if (existingItemIndex > -1) {
-                mergedCart[existingItemIndex].quantity += localItem.quantity;
-              } else {
-                mergedCart.push(localItem);
-              }
-            });
-            setDoc(cartRef, { items: mergedCart }, { merge: true });
-            setLocalCart([]); // Clear local cart
-          }
+        const firestoreCart = docSnap.exists() ? docSnap.data().items || [] : [];
+        const localCartOnLogin = JSON.parse(localStorage.getItem('cart') || '[]');
 
+        if (localCartOnLogin.length > 0) {
+          const mergedCart = [...firestoreCart];
+          localCartOnLogin.forEach((localItem: CartItem) => {
+            const existingItemIndex = mergedCart.findIndex(item => item.product.id === localItem.product.id);
+            if (existingItemIndex > -1) {
+              mergedCart[existingItemIndex].quantity += localItem.quantity;
+            } else {
+              mergedCart.push(localItem);
+            }
+          });
+          setDoc(cartRef, { items: mergedCart }, { merge: true });
+          setCartItems(mergedCart);
+          setLocalCart([]); // Clear local cart
         } else {
-          // No cart in Firestore, check local storage
-          if (localCart.length > 0) {
-            setCartItems(localCart);
-            setDoc(cartRef, { items: localCart });
-            setLocalCart([]); // Clear local cart
-          } else {
-            setCartItems([]);
-          }
+          setCartItems(firestoreCart);
         }
       });
 
@@ -81,7 +70,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Not logged in, use local storage
       setCartItems(localCart);
     }
-  }, [user, loading, setLocalCart, localCart]);
+  }, [user, loading, setLocalCart]);
 
 
   const updateCart = (newCartItems: CartItem[]) => {
