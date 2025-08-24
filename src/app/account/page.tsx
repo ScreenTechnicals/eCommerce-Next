@@ -50,6 +50,128 @@ const mockAddresses = [
     }
 ]
 
+const handleDownloadInvoice = (order: typeof mockOrders[0]) => {
+    let invoiceContent = `Invoice for Order: ${order.orderId}\n`;
+    invoiceContent += `Date: ${format(order.date, 'PPP')}\n`;
+    invoiceContent += `Status: ${order.status}\n`;
+    invoiceContent += `Total: ${formatCurrency(order.total)}\n\n`;
+    invoiceContent += 'Items:\n';
+    order.items.forEach(item => {
+        invoiceContent += `- ${item.product.name} x ${item.quantity} (${formatCurrency(item.price)})\n`;
+    });
+
+    const blob = new Blob([invoiceContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoice-${order.orderId}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
+const ProfileTab = ({ user }: { user: any }) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Profile</CardTitle>
+        <CardDescription>Your personal account information.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-4">
+            <Avatar className="h-20 w-20">
+                <AvatarImage src={user?.photoURL} alt={user?.name} />
+                <AvatarFallback>{user?.name?.[0].toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div>
+                <h3 className="text-xl font-semibold">{user?.name}</h3>
+                <p className="text-muted-foreground">{user?.email}</p>
+            </div>
+        </div>
+      </CardContent>
+    </Card>
+);
+  
+const OrdersTab = () => (
+    <Card>
+    <CardHeader>
+        <CardTitle>My Orders</CardTitle>
+        <CardDescription>Here is a list of your past orders.</CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-6">
+        {mockOrders.length > 0 ? (
+        mockOrders.map((order) => (
+            <Card key={order.orderId} className="p-4">
+            <div className="flex flex-wrap justify-between gap-4">
+                <div>
+                <p className="font-semibold">Order ID:</p>
+                <p className="text-sm text-muted-foreground">{order.orderId}</p>
+                </div>
+                <div>
+                <p className="font-semibold">Date:</p>
+                <p className="text-sm text-muted-foreground">{format(order.date, 'PPP')}</p>
+                </div>
+                <div>
+                <p className="font-semibold">Status:</p>
+                <p className="text-sm font-semibold text-green-600">{order.status}</p>
+                </div>
+                <div>
+                <p className="font-semibold">Total:</p>
+                <p className="text-sm font-semibold">{formatCurrency(order.total)}</p>
+                </div>
+                <div>
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadInvoice(order)}>
+                    <Download className="mr-2 size-4" />
+                    Download Invoice
+                    </Button>
+                </div>
+            </div>
+            <Separator className="my-4" />
+            <div>
+                <h4 className="mb-2 font-medium">Items:</h4>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                    {order.items.map(item => (
+                        <li key={item.product.id}>{item.product.name} x {item.quantity}</li>
+                    ))}
+                </ul>
+            </div>
+            </Card>
+        ))
+        ) : (
+        <div className="text-center text-muted-foreground py-8">
+            <Package className="mx-auto h-12 w-12" />
+            <p className="mt-4">You haven't placed any orders yet.</p>
+        </div>
+        )}
+    </CardContent>
+    </Card>
+);
+
+const AddressesTab = () => (
+    <Card>
+    <CardHeader>
+        <CardTitle>My Addresses</CardTitle>
+        <CardDescription>Manage your saved shipping addresses.</CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-4">
+        <div className="space-y-4">
+        {mockAddresses.map(address => (
+            <div key={address.id} className="flex items-center justify-between rounded-md border p-4">
+                <div className="space-y-1">
+                    <p className="font-semibold">{address.name}</p>
+                    <p className="text-muted-foreground">{address.address}</p>
+                </div>
+                <div>
+                    <Button variant="ghost" size="sm">Edit</Button>
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">Remove</Button>
+                </div>
+            </div>
+        ))}
+        </div>
+        <Button>Add New Address</Button>
+    </CardContent>
+    </Card>
+)
 
 export default function AccountPage() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -69,108 +191,6 @@ export default function AccountPage() {
     );
   }
   
-  const ProfileTab = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Profile</CardTitle>
-        <CardDescription>Your personal account information.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
-                <AvatarImage src={user?.photoURL} alt={user?.name} />
-                <AvatarFallback>{user?.name?.[0].toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div>
-                <h3 className="text-xl font-semibold">{user?.name}</h3>
-                <p className="text-muted-foreground">{user?.email}</p>
-            </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-  
-  const OrdersTab = () => (
-     <Card>
-      <CardHeader>
-        <CardTitle>My Orders</CardTitle>
-        <CardDescription>Here is a list of your past orders.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {mockOrders.length > 0 ? (
-          mockOrders.map((order) => (
-            <Card key={order.orderId} className="p-4">
-              <div className="flex flex-wrap justify-between gap-4">
-                <div>
-                  <p className="font-semibold">Order ID:</p>
-                  <p className="text-sm text-muted-foreground">{order.orderId}</p>
-                </div>
-                <div>
-                  <p className="font-semibold">Date:</p>
-                  <p className="text-sm text-muted-foreground">{format(order.date, 'PPP')}</p>
-                </div>
-                 <div>
-                  <p className="font-semibold">Status:</p>
-                  <p className="text-sm font-semibold text-green-600">{order.status}</p>
-                </div>
-                <div>
-                  <p className="font-semibold">Total:</p>
-                  <p className="text-sm font-semibold">{formatCurrency(order.total)}</p>
-                </div>
-                 <div>
-                    <Button variant="outline" size="sm">
-                      <Download className="mr-2 size-4" />
-                      Download Invoice
-                    </Button>
-                </div>
-              </div>
-              <Separator className="my-4" />
-               <div>
-                <h4 className="mb-2 font-medium">Items:</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                    {order.items.map(item => (
-                        <li key={item.product.id}>{item.product.name} x {item.quantity}</li>
-                    ))}
-                </ul>
-              </div>
-            </Card>
-          ))
-        ) : (
-          <div className="text-center text-muted-foreground py-8">
-            <Package className="mx-auto h-12 w-12" />
-            <p className="mt-4">You haven't placed any orders yet.</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-
-  const AddressesTab = () => (
-     <Card>
-      <CardHeader>
-        <CardTitle>My Addresses</CardTitle>
-        <CardDescription>Manage your saved shipping addresses.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-4">
-           {mockAddresses.map(address => (
-               <div key={address.id} className="flex items-center justify-between rounded-md border p-4">
-                   <div className="space-y-1">
-                       <p className="font-semibold">{address.name}</p>
-                       <p className="text-muted-foreground">{address.address}</p>
-                   </div>
-                   <div>
-                       <Button variant="ghost" size="sm">Edit</Button>
-                       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">Remove</Button>
-                   </div>
-               </div>
-           ))}
-        </div>
-        <Button>Add New Address</Button>
-      </CardContent>
-    </Card>
-  )
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="mb-8 font-headline text-4xl font-bold">My Account</h1>
@@ -180,7 +200,7 @@ export default function AccountPage() {
           <TabsTrigger value="orders"><Package className="mr-2"/>Orders</TabsTrigger>
           <TabsTrigger value="addresses"><Home className="mr-2"/>Addresses</TabsTrigger>
         </TabsList>
-        <TabsContent value="profile" className="mt-6"><ProfileTab /></TabsContent>
+        <TabsContent value="profile" className="mt-6"><ProfileTab user={user} /></TabsContent>
         <TabsContent value="orders" className="mt-6"><OrdersTab /></TabsContent>
         <TabsContent value="addresses" className="mt-6"><AddressesTab /></TabsContent>
       </Tabs>
