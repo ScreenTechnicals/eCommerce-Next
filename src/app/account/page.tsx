@@ -129,9 +129,12 @@ const OrdersTab = () => {
     useEffect(() => {
         if (!user) return;
         const ordersRef = collection(db, 'orders');
-        const q = query(ordersRef, where('userId', '==', user.id), orderBy('createdAt', 'desc'));
+        const q = query(ordersRef, where('userId', '==', user.id));
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
+            const fetchedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+            // Sort client-side
+            fetchedOrders.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+            setOrders(fetchedOrders);
         });
         return () => unsubscribe();
     }, [user]);
