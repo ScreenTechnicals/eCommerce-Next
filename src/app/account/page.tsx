@@ -86,7 +86,6 @@ export default function AccountPage() {
                 <p className="text-muted-foreground">{user?.email}</p>
             </div>
         </div>
-        <Button variant="outline">Edit Profile</Button>
       </CardContent>
     </Card>
   );
