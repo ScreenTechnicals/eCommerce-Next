@@ -1,15 +1,22 @@
 'use client';
 
+import { useState } from 'react';
 import { useCart } from '@/context/cart-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { Trash2, ShoppingBag } from 'lucide-react';
+import { Trash2, ShoppingBag, Tag } from 'lucide-react';
 import Link from 'next/link';
+import { Separator } from '@/components/ui/separator';
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, updateQuantity, cartTotal, itemCount } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, cartTotal, itemCount, applyCoupon, discount, cartTotalWithDiscount } = useCart();
+  const [coupon, setCoupon] = useState('');
+
+  const handleApplyCoupon = () => {
+    applyCoupon(coupon);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -64,13 +71,33 @@ export default function CartPage() {
                   <span>Subtotal ({itemCount} items)</span>
                   <span>{formatCurrency(cartTotal)}</span>
                 </div>
+                 {discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount</span>
+                    <span>-{formatCurrency(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Shipping</span>
                   <span className="text-green-600">FREE</span>
                 </div>
-                <div className="flex justify-between border-t pt-4 font-bold">
+                <Separator />
+                <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>
-                  <span>{formatCurrency(cartTotal)}</span>
+                  <span>{formatCurrency(cartTotalWithDiscount)}</span>
+                </div>
+                <Separator />
+                 <div className="space-y-2 pt-2">
+                    <label htmlFor="coupon" className="text-sm font-medium">Have a coupon?</label>
+                    <div className="flex gap-2">
+                        <Input 
+                          id="coupon"
+                          placeholder="Coupon code"
+                          value={coupon}
+                          onChange={(e) => setCoupon(e.target.value)}
+                        />
+                        <Button onClick={handleApplyCoupon} variant="outline">Apply</Button>
+                    </div>
                 </div>
               </CardContent>
               <CardFooter>

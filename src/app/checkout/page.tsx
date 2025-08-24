@@ -31,7 +31,7 @@ const paymentSchema = z.object({
 const checkoutSchema = shippingSchema.merge(paymentSchema);
 
 export default function CheckoutPage() {
-  const { cartItems, cartTotal, clearCart } = useCart();
+  const { cartItems, cartTotal, discount, cartTotalWithDiscount, clearCart } = useCart();
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
@@ -143,9 +143,20 @@ export default function CheckoutPage() {
                 </div>
               ))}
                <Separator />
+                <div className="flex justify-between text-sm">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(cartTotal)}</span>
+                </div>
+                {discount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                        <span>Discount</span>
+                        <span>-{formatCurrency(discount)}</span>
+                    </div>
+                )}
+               <Separator />
                <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>{formatCurrency(cartTotal)}</span>
+                  <span>{formatCurrency(cartTotalWithDiscount)}</span>
                 </div>
             </CardContent>
           </Card>
