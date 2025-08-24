@@ -13,6 +13,7 @@ import { formatCurrency } from '@/lib/utils';
 import { Package, Home, User, Download } from 'lucide-react';
 import type { CartItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
+import jsPDF from 'jspdf';
 
 // Mock data - in a real app, this would come from a database
 const mockOrders = [
@@ -51,24 +52,36 @@ const mockAddresses = [
 ]
 
 const handleDownloadInvoice = (order: typeof mockOrders[0]) => {
-    let invoiceContent = `Invoice for Order: ${order.orderId}\n`;
-    invoiceContent += `Date: ${format(order.date, 'PPP')}\n`;
-    invoiceContent += `Status: ${order.status}\n`;
-    invoiceContent += `Total: ${formatCurrency(order.total)}\n\n`;
-    invoiceContent += 'Items:\n';
+    const doc = new jsPDF();
+
+    doc.setFontSize(22);
+    doc.text("Invoice", 105, 20, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.text(`Order ID: ${order.orderId}`, 20, 40);
+    doc.text(`Date: ${format(order.date, 'PPP')}`, 20, 46);
+    doc.text(`Status: ${order.status}`, 20, 52);
+
+    doc.setFontSize(16);
+    doc.text("Items", 20, 70);
+
+    let y = 78;
+    doc.setFontSize(10);
     order.items.forEach(item => {
-        invoiceContent += `- ${item.product.name} x ${item.quantity} (${formatCurrency(item.price)})\n`;
+        doc.text(`${item.product.name} x ${item.quantity}`, 20, y);
+        doc.text(formatCurrency(item.price), 190, y, { align: 'right'});
+        y += 6;
     });
 
-    const blob = new Blob([invoiceContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `invoice-${order.orderId}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    doc.setLineWidth(0.5);
+    doc.line(20, y, 190, y);
+    y += 8;
+
+    doc.setFontSize(14);
+    doc.text("Total:", 150, y);
+    doc.text(formatCurrency(order.total), 190, y, { align: 'right'});
+
+    doc.save(`invoice-${order.orderId}.pdf`);
 };
 
 const ProfileTab = ({ user }: { user: any }) => (
