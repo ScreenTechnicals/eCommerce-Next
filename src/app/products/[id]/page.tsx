@@ -1,6 +1,6 @@
 'use client';
 
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { products } from '@/data/products';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/cart-provider';
@@ -10,9 +10,12 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Card, CardContent } from '@/components/ui/card';
 import { Star, ShoppingCart } from 'lucide-react';
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
+export default function ProductDetailPage() {
   const { addToCart } = useCart();
-  const product = products.find(p => p.id === params.id);
+  const params = useParams();
+  const { id } = params;
+
+  const product = products.find(p => p.id === id);
 
   if (!product) {
     notFound();
