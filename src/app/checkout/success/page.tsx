@@ -7,28 +7,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { CheckCircle2, Package } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/utils';
-import type { CartItem } from '@/lib/types';
-
-interface OrderDetails {
-  orderId: string;
-  items: CartItem[];
-  total: number;
-  shipping: {
-    fullName: string;
-    address: string;
-    city: string;
-    zipCode: string;
-    country: string;
-  };
-}
+import type { Order } from '@/lib/types';
 
 export default function OrderSuccessPage() {
-  const [order, setOrder] = useState<OrderDetails | null>(null);
+  const [order, setOrder] = useState<Omit<Order, 'createdAt'> | null>(null);
 
   useEffect(() => {
     const lastOrder = localStorage.getItem('lastOrder');
     if (lastOrder) {
       setOrder(JSON.parse(lastOrder));
+      // Optional: remove the item from localStorage after displaying it
+      // localStorage.removeItem('lastOrder');
     }
   }, []);
 
@@ -89,10 +78,10 @@ export default function OrderSuccessPage() {
           <div>
             <h3 className="mb-2 font-headline text-lg font-semibold">Shipping To</h3>
             <address className="not-italic text-muted-foreground">
-              {order.shipping.fullName}<br />
-              {order.shipping.address}<br />
-              {order.shipping.city}, {order.shipping.zipCode}<br />
-              {order.shipping.country}
+              {order.shippingAddress.fullName}<br />
+              {order.shippingAddress.address}<br />
+              {order.shippingAddress.city}, {order.shippingAddress.zipCode}<br />
+              {order.shippingAddress.country}
             </address>
           </div>
         </CardContent>

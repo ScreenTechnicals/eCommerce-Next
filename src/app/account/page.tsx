@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
-import { Package, Home, User, Download, PlusCircle } from 'lucide-react';
+import { Package, Home, User, Download, PlusCircle, Truck, CheckCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import { db } from '@/lib/firebase';
@@ -22,29 +22,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
+import type { Order } from '@/lib/types';
 
-// Mock data - in a real app, this would come from a database
-const mockOrders = [
-  {
-    orderId: 'ORD-1678886400000',
-    date: new Date('2023-03-15'),
-    status: 'Delivered',
-    total: 145.98,
-    items: [
-      { product: { id: '3', name: 'Urban Explorer Jacket' }, quantity: 1, price: 129.99 },
-      { product: { id: '4', name: 'The Midnight Library' }, quantity: 1, price: 15.99 },
-    ],
-  },
-  {
-    orderId: 'ORD-1676457600000',
-    date: new Date('2023-02-15'),
-    status: 'Delivered',
-    total: 249.99,
-    items: [
-       { product: { id: '2', name: 'AcousticBliss Headphones' }, quantity: 1, price: 249.99 },
-    ],
-  },
-];
 
 const addressSchema = z.object({
   name: z.string().min(2, 'A name for the address is required'),
@@ -55,7 +34,7 @@ const addressSchema = z.object({
   country: z.string().min(2, 'Country is required'),
 });
 
-const handleDownloadInvoice = (order: typeof mockOrders[0]) => {
+const handleDownloadInvoice = (order: Order) => {
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
     let y = 20;
@@ -74,7 +53,7 @@ const handleDownloadInvoice = (order: typeof mockOrders[0]) => {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.text(`Order ID: ${order.orderId}`, 20, y);
-    doc.text(`Date: ${format(order.date, 'PPP')}`, 190, y, { align: 'right' });
+    doc.text(`Date: ${format(order.createdAt.toDate(), 'PPP')}`, 190, y, { align: 'right' });
     y += 6;
     doc.text(`Status: ${order.status}`, 20, y);
     y += 12;
@@ -98,8 +77,8 @@ const handleDownloadInvoice = (order: typeof mockOrders[0]) => {
     order.items.forEach(item => {
         doc.text(item.product.name, 22, y);
         doc.text(item.quantity.toString(), 125, y, { align: 'center'});
-        doc.text(formatCurrency(item.price), 155, y, { align: 'right'});
-        doc.text(formatCurrency(item.price * item.quantity), 188, y, { align: 'right'});
+        doc.text(formatCurrency(item.product.price), 155, y, { align: 'right'});
+        doc.text(formatCurrency(item.product.price * item.quantity), 188, y, { align: 'right'});
         y += 7;
     });
 
@@ -143,60 +122,142 @@ const ProfileTab = ({ user }: { user: any }) => (
     </Card>
 );
   
-const OrdersTab = () => (
-    <Card>
-    <CardHeader>
-        <CardTitle>My Orders</CardTitle>
-        <CardDescription>Here is a list of your past orders.</CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-6">
-        {mockOrders.length > 0 ? (
-        mockOrders.map((order) => (
-            <Card key={order.orderId} className="p-4">
-            <div className="flex flex-wrap justify-between gap-4">
-                <div>
-                <p className="font-semibold">Order ID:</p>
-                <p className="text-sm text-muted-foreground">{order.orderId}</p>
+const OrdersTab = () => {
+    const { user } = useAuth();
+    const [orders, setOrders] = useState<Order[]>([]);
+
+    useEffect(() => {
+        if (!user) return;
+        const ordersRef = collection(db, 'orders');
+        const q = query(ordersRef, where('userId', '==', user.id), orderBy('createdAt', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
+        });
+        return () => unsubscribe();
+    }, [user]);
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'Processing': return 'bg-yellow-500';
+            case 'Shipped': return 'bg-blue-500';
+            case 'Delivered': return 'bg-green-500';
+            default: return 'bg-gray-500';
+        }
+    };
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>My Orders</CardTitle>
+                <CardDescription>Here is a list of your past orders.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {orders.length > 0 ? (
+                orders.map((order) => (
+                    <Card key={order.orderId} className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <p className="font-semibold">Order ID:</p>
+                                <p className="text-sm text-muted-foreground">{order.orderId}</p>
+                            </div>
+                            <div>
+                                <p className="font-semibold">Date:</p>
+                                <p className="text-sm text-muted-foreground">{format(order.createdAt.toDate(), 'PPP')}</p>
+                            </div>
+                            <div>
+                                <p className="font-semibold">Status:</p>
+                                <Badge className={`${getStatusColor(order.status)}`}>{order.status}</Badge>
+                            </div>
+                            <div>
+                                <p className="font-semibold">Total:</p>
+                                <p className="text-sm font-semibold">{formatCurrency(order.total)}</p>
+                            </div>
+                        </div>
+                        <Separator className="my-4" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div>
+                                <h4 className="mb-2 font-medium">Items:</h4>
+                                <ul className="space-y-1 text-sm text-muted-foreground">
+                                    {order.items.map(item => (
+                                        <li key={item.product.id}>{item.product.name} x {item.quantity}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 className="mb-2 font-medium">Shipping Address:</h4>
+                                <address className="not-italic text-sm text-muted-foreground">
+                                    {order.shippingAddress.fullName}<br />
+                                    {order.shippingAddress.address}<br />
+                                    {order.shippingAddress.city}, {order.shippingAddress.zipCode}<br />
+                                    {order.shippingAddress.country}
+                                </address>
+                            </div>
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                            <Button variant="outline" size="sm" onClick={() => handleDownloadInvoice(order)}>
+                                <Download className="mr-2 size-4" /> Download Invoice
+                            </Button>
+                            {order.status === 'Shipped' && (
+                                 <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                            <Truck className="mr-2 size-4" /> Track Order
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Track Your Order</DialogTitle>
+                                            <DialogDescription>
+                                                Tracking information for order {order.orderId}
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="py-4">
+                                            <ul className="space-y-6">
+                                                <li className="flex items-center gap-4">
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white">
+                                                        <CheckCircle className="size-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold">Order Confirmed</p>
+                                                        <p className="text-sm text-muted-foreground">{format(order.createdAt.toDate(), 'PPP, p')}</p>
+                                                    </div>
+                                                </li>
+                                                 <li className="flex items-center gap-4">
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white">
+                                                        <Truck className="size-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold">Shipped</p>
+                                                        <p className="text-sm text-muted-foreground">Your order is on its way.</p>
+                                                    </div>
+                                                </li>
+                                                <li className="flex items-center gap-4 opacity-50">
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-400 text-white">
+                                                         <Package className="size-5" />
+                                                    </div>
+                                                     <div>
+                                                        <p className="font-semibold">Out for Delivery</p>
+                                                        <p className="text-sm text-muted-foreground">Expected soon.</p>
+                                                    </div>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </DialogContent>
+                                 </Dialog>
+                            )}
+                        </div>
+                    </Card>
+                ))
+                ) : (
+                <div className="text-center text-muted-foreground py-8">
+                    <Package className="mx-auto h-12 w-12" />
+                    <p className="mt-4">You haven't placed any orders yet.</p>
                 </div>
-                <div>
-                <p className="font-semibold">Date:</p>
-                <p className="text-sm text-muted-foreground">{format(order.date, 'PPP')}</p>
-                </div>
-                <div>
-                <p className="font-semibold">Status:</p>
-                <p className="text-sm font-semibold text-green-600">{order.status}</p>
-                </div>
-                <div>
-                <p className="font-semibold">Total:</p>
-                <p className="text-sm font-semibold">{formatCurrency(order.total)}</p>
-                </div>
-                <div>
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadInvoice(order)}>
-                    <Download className="mr-2 size-4" />
-                    Download Invoice
-                    </Button>
-                </div>
-            </div>
-            <Separator className="my-4" />
-            <div>
-                <h4 className="mb-2 font-medium">Items:</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                    {order.items.map(item => (
-                        <li key={item.product.id}>{item.product.name} x {item.quantity}</li>
-                    ))}
-                </ul>
-            </div>
-            </Card>
-        ))
-        ) : (
-        <div className="text-center text-muted-foreground py-8">
-            <Package className="mx-auto h-12 w-12" />
-            <p className="mt-4">You haven't placed any orders yet.</p>
-        </div>
-        )}
-    </CardContent>
-    </Card>
-);
+                )}
+            </CardContent>
+        </Card>
+    );
+};
 
 const AddressesTab = () => {
     const { user } = useAuth();

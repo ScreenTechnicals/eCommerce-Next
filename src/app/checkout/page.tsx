@@ -15,7 +15,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { formatCurrency } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import type { Order } from '@/lib/types';
+
 
 const shippingSchema = z.object({
   fullName: z.string().min(2, 'Full name is required'),
@@ -83,16 +85,29 @@ export default function CheckoutPage() {
     fetchActiveAddress();
   }, [user, form]);
 
-  const onSubmit = (values: z.infer<typeof checkoutSchema>) => {
-    const orderDetails = {
-      shipping: values,
+  const onSubmit = async (values: z.infer<typeof checkoutSchema>) => {
+    if (!user) return;
+    
+    const { cardNumber, expiryDate, cvc, ...shippingAddress } = values;
+
+    const orderDetails: Omit<Order, 'id' | 'createdAt'> = {
+      userId: user.id,
+      orderId: `ORD-${Date.now()}`,
+      status: 'Processing',
+      shippingAddress: shippingAddress,
       items: cartItems,
       total: cartTotalWithDiscount,
-      orderId: `ORD-${Date.now()}`
+      discount: discount,
     };
-    localStorage.setItem('lastOrder', JSON.stringify(orderDetails));
     
-    console.log('Order submitted:', values);
+    // Save order to Firestore
+    const orderRef = await addDoc(collection(db, 'orders'), {
+        ...orderDetails,
+        createdAt: serverTimestamp()
+    });
+
+    localStorage.setItem('lastOrder', JSON.stringify({ ...orderDetails, id: orderRef.id }));
+    
     clearCart();
     router.push('/checkout/success');
   };
