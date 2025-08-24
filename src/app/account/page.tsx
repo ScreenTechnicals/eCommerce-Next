@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -49,6 +48,7 @@ const mockOrders = [
 
 const addressSchema = z.object({
   name: z.string().min(2, 'A name for the address is required'),
+  phoneNumber: z.string().min(10, 'A valid phone number is required'),
   address: z.string().min(5, 'Address is required'),
   city: z.string().min(2, 'City is required'),
   zipCode: z.string().min(5, 'A valid zip code is required'),
@@ -205,7 +205,7 @@ const AddressesTab = () => {
   
     const form = useForm<z.infer<typeof addressSchema>>({
       resolver: zodResolver(addressSchema),
-      defaultValues: { name: '', address: '', city: '', zipCode: '', country: '' },
+      defaultValues: { name: '', phoneNumber: '', address: '', city: '', zipCode: '', country: '' },
     });
   
     useEffect(() => {
@@ -240,10 +240,11 @@ const AddressesTab = () => {
         <CardContent className="space-y-4">
           {addresses.length > 0 ? (
             addresses.map(address => (
-              <div key={address.id} className="flex items-center justify-between rounded-md border p-4">
+              <div key={address.id} className="flex items-start justify-between rounded-md border p-4">
                 <div className="space-y-1">
                   <p className="font-semibold">{address.name}</p>
                   <p className="text-muted-foreground">{address.address}, {address.city}, {address.zipCode}, {address.country}</p>
+                  <p className="text-sm text-muted-foreground">Phone: {address.phoneNumber}</p>
                 </div>
                 <div>
                   <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleRemoveAddress(address.id)}>Remove</Button>
@@ -268,9 +269,14 @@ const AddressesTab = () => {
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleAddAddress)} className="space-y-4">
-                        <FormField control={form.control} name="name" render={({ field }) => (
-                            <FormItem><FormLabel>Address Name (e.g. Home, Work)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <FormField control={form.control} name="name" render={({ field }) => (
+                                <FormItem><FormLabel>Address Name (e.g. Home)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                             <FormField control={form.control} name="phoneNumber" render={({ field }) => (
+                                <FormItem><FormLabel>Receiver's Phone Number</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                        </div>
                          <FormField control={form.control} name="address" render={({ field }) => (
                             <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
